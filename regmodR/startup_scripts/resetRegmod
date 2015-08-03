@@ -1,0 +1,115 @@
+#!/bin/bash
+# reset Regmod, clear db and delete all files
+# TODO: needs a workover, wrong table names, not all tables,
+# see setupDBTables for reference
+# pass for db is in .bash_profile
+
+# clear db tables
+psql -d regmod -U regmod  << EOF
+DELETE FROM regmod_views_test;
+DELETE FROM regmod_idxfields_view;
+DELETE FROM monthly_recon_temp;
+DELETE FROM single_recon_temp_png;
+DELETE FROM ogr_test;
+DELETE FROM temperatureStats;
+DELETE FROM temp_stations_stats;
+DELETE FROM temp_stations_relevant;
+
+DELETE FROM temperature_validation_stations;
+DELETE FROM temperature_validation_data;
+  
+
+DROP TABLE monthly_recon_temp;
+DROP TABLE single_recon_temp_png;
+
+
+-- CREATE idx_4_pca table
+ CREATE TABLE idx_4_pca (rid serial NOT NULL,
+  rast raster,
+  filename text,
+  event_id numeric,
+  year numeric,
+  month numeric,
+  idx_val numeric,
+  idx_xmin numeric,
+  idx_xmax numeric,
+  idx_ymin numeric,
+  idx_ymax numeric,
+  CONSTRAINT idx_4_pca_pkey PRIMARY KEY (rid));
+
+  -- CREATE weight_4_pca table
+ CREATE TABLE weight_4_pca (rid serial NOT NULL,
+  rast raster,
+  filename text,
+  event_id numeric,
+  year numeric,
+  month numeric,
+  idx_val numeric,
+  idx_xmin numeric,
+  idx_xmax numeric,
+  idx_ymin numeric,
+  idx_ymax numeric,
+  CONSTRAINT weight_4_pca_pkey PRIMARY KEY (rid));
+
+-- CREATE idxRec_4_pca table
+ CREATE TABLE idxRec_4_pca (rid serial NOT NULL,
+  rast raster,
+  filename text,
+  event_id numeric,
+  year numeric,
+  month numeric,
+  idx_val numeric,
+  idx_xmin numeric,
+  idx_xmax numeric,
+  idx_ymin numeric,
+  idx_ymax numeric,
+  CONSTRAINT idxRec_4_pca_pkey PRIMARY KEY (rid));
+
+
+-- CREATE single view table
+ CREATE TABLE single_recon_temp_png (rid serial NOT NULL,
+  rast raster,
+  filename text,
+  event_id numeric,
+  year numeric,
+  month numeric,
+  idx_val numeric,
+  idx_xmin numeric,
+  idx_xmax numeric,
+  idx_ymin numeric,
+  idx_ymax numeric,
+  recon_single_temp_png character varying,
+  recon_single_temp_contour_geojson character varying,
+  CONSTRAINT single_recon_temp_png_pkey PRIMARY KEY (rid));
+
+-- create monthly data table
+CREATE TABLE monthly_recon_temp (rid serial NOT NULL,
+  rast raster,
+  filename text,
+  year numeric,
+  month numeric,
+  idx_xmin numeric,
+  idx_xmax numeric,
+  idx_ymin numeric,
+  idx_ymax numeric,
+  monthly_recon_temp_contour_geojson character varying,
+  CONSTRAINT monthly_recon_temp_pkey PRIMARY KEY (rid));
+
+-- grant acces
+ALTER TABLE single_recon_temp_png OWNER TO mcb;
+ALTER TABLE monthly_recon_temp OWNER TO mcb;
+  
+EOF
+
+## clear folders
+
+# png
+rm -f /var/shiny-server/www/datacollectorv2/www/genmaps/png/idx/*
+rm -f /var/shiny-server/www/datacollectorv2/www/genmaps/png/temperature/*
+
+# geojson
+rm -f /var/shiny-server/www/datacollectorv2/www/genmaps/geojson/* 
+
+# tif
+rm -f /var/shiny-server/www/datacollectorv2/www/genmaps/tif/idx/*         
+rm -f /var/shiny-server/www/datacollectorv2/www/genmaps/tif/temperature/*         

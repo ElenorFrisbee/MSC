@@ -1,0 +1,77 @@
+#!/bin/bash
+
+## START CONFIGURATION 
+                  
+# define postgres credentials
+dbHost='localhost'
+dbName='myDbName'
+dbUser='myUser'
+dbPass='myPass'
+
+# define if all tables and data should be created or only one run of the model with random data
+frmScratch=True
+
+## END CONFIGURATION
+
+starts=$(date +%s)
+
+# get full path to file
+pushd `dirname $0` > /dev/null
+SCRIPTPATH=`pwd -P`
+popd > /dev/null
+parentdir=$(dirname $SCRIPTPATH)
+
+# define R folder path
+regmodRPATH=$parentdir'/R/regmod'
+
+# define path for python scripts
+pyPATH=$SCRIPTPATH
+
+# define world polygon shp file
+shpWorldFile=$parentdir'/GISFiles/ne_50m_coastline_world_polygon.shp'
+
+if [ $frmScratch == False ]
+# only calculate one dataset from the model
+    then
+        
+        # create all data tables
+        python $pyPATH/createTables.py $dbHost $dbName $dbUser $dbPass
+   
+        cd $regmodRPATH &&
+        # start python startup script
+        python $pyPATH/fastMake.py $dbHost $dbName $dbUser $dbPass
+else
+    # create full regmodR environment
+    
+    # create all data tables
+    python $pyPATH/createTables.py $dbHost $dbName $dbUser $dbPass
+    
+    # cd in regmodR folder
+    cd $regmodRPATH &&
+             
+    # populate cru tables with data
+    Rscript $parentdir/R/cruGenerator.R
+    
+    # check tambora data (e.g. only land surface data and data from central europe)
+    python $pyPATH/checkTambora.py $dbHost $dbName $dbUser $dbPass $shpWorldFile
+    
+    # cd in ghcn folder
+    cd $parentdir/R/ghcnV3_parser &&
+    
+    #  get validation data, add tables and populate
+    Rscript $parentdir/R/ghcnV3_parser/main.R $dbHost $dbName $dbUser $dbPass 
+    
+    # run regmodR model for every event
+    cd $regmodRPATH &&
+    python $pyPATH/regmodRAll.py $dbHost $dbName $dbUser $dbPass  
+        
+fi
+
+ends=$(date +%s)
+endm=$((($ends-$starts)/60))
+ends=$((($ends-$starts)%60))
+
+echo "# # # # # # # # # # # # # # # # # # # # # # # #"
+echo "execution time"         
+echo "minutes: $endm seconds: $ends"
+echo "# # # # # # # # # # # # # # # # # # # # # # # #"        

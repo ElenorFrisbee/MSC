@@ -1,0 +1,200 @@
+#!/bin/bash
+# create all db tables in db regmod for user regmod
+# pass for db is in .bash_profile
+
+psql -d regmod -U regmod  << EOF
+
+-- create main table with relevant tambora info for thermal index reconstruction;
+-- this table has to be updated when new data is added (view is to slow) 
+-- trigger has to be fired here if something has changed 
+CREATE TABLE tambora_temperature_monthly(
+ SELECT sub_select_1.id AS event_id,
+    sub_select_1.time_begin,
+    sub_select_1.time_end,
+    sub_select_1.time_diff_day,
+    sub_select_1.year_begin,
+    sub_select_1.month_id_begin,
+    sub_select_1.day_id_begin,
+    sub_select_1.year_end,
+    sub_select_1.month_id_end,
+    sub_select_1.day_id_end,
+    sub_select_1.name AS location,
+    sub_select_1.location_id,
+    st_x(st_centroid(location.geometry)) AS lon,
+    st_y(st_centroid(location.geometry)) AS lat,
+    st_x(st_centroid(location.geometry)) AS lon_info,
+    st_y(st_centroid(location.geometry)) AS lat_info,
+    location.geometry AS location_geo,
+    geography(location.geometry)::geography(GeometryCollection,4326) AS location_geog,
+    sub_select_1.parameter_id,
+    sub_select_1.attribute_id,
+    sub_select_1.value_id,
+    parameter.name_de AS parameter_de,
+    attribute.name_de AS attribute_de,
+    value.value AS value_idx,
+    parameter.name_en AS parameter_en,
+    attribute.name_en AS attribute_en,
+    value.name_en AS value_en,
+    regexp_replace(sub_select_1.text, '[\n\r]+'::text, ' '::text, 'g'::text) AS text,
+    sub_select_1.quote_id,
+    regexp_replace(btrim((((((((((((((((((((((((((COALESCE(source.title, ''::text) || ' '::text) || COALESCE(source.contributor, ''::text)) || ' '::text) || COALESCE(source.date::text, ''::text)) || ' '::text) || COALESCE(source.publisher::text, ''::text)) || ' '::text) || COALESCE(source.description, ''::text)) || ' '::text) || COALESCE(source.subtitle, ''::text)) || ' '::text) || COALESCE(source.uniform_title, ''::text)) || ' '::text) || COALESCE(source.edition::text, ''::text)) || ' '::text) || COALESCE(source.volume::text, ''::text)) || ' '::text) || COALESCE(source.issue::text, ''::text)) || ' '::text) || COALESCE(source.page::text, ''::text)) || ' '::text) || COALESCE(source.isbn::text, ''::text)) || ' '::text) || COALESCE(source.issn::text, ''::text)) || ' '::text) || COALESCE(source.url::text, ''::text), ' '::text), '[\n\r]+'::text, ' '::text, 'g'::text) AS bibliography,
+    sub_select_1.source_id,
+    sub_select_1.project_id,
+    sub_select_1.created_by
+   FROM ( SELECT event.id,
+            event.time_begin,
+            event.time_end,
+            date_part('day'::text, event.time_end - event.time_begin)::integer AS time_diff_day,
+            name.location_id,
+            name.name,
+            event.quote_id,
+            quote.text,
+            quote.source_id,
+            event.parameter_id,
+            event.attribute_id,
+            event.value_id,
+            event.year_begin,
+            event.month_id_begin,
+            event.day_id_begin,
+            event.year_end,
+            event.month_id_end,
+            event.day_id_end,
+            event.project_id,
+            event.created_by
+           FROM event
+             JOIN name ON event.name_id = name.id
+             JOIN quote ON event.quote_id = quote.id) sub_select_1
+     JOIN location ON sub_select_1.location_id = location.id
+     JOIN source ON sub_select_1.source_id = source.id
+     LEFT JOIN attribute ON sub_select_1.attribute_id = attribute.id
+     LEFT JOIN value ON sub_select_1.value_id = value.id
+     LEFT JOIN parameter ON sub_select_1.parameter_id = parameter.id
+    WHERE
+        sub_select_1.attribute_id = 20 AND
+        sub_select_1.month_id_begin <= 12 AND
+        sub_select_1.time_diff_day >= 28 AND
+        sub_select_1.time_diff_day <= 31 AND
+        value.value BETWEEN -3 and 3);
+
+
+-- create reconstructed index fields table for live pca
+CREATE TABLE temperature_recon_idx_4_pca (rid serial NOT NULL,
+  event_id numeric,
+  year numeric,
+  month numeric,
+  idx_val numeric,
+  rast raster,
+  filename text,
+  idx_xmin numeric,
+  idx_xmax numeric,
+  idx_ymin numeric,
+  idx_ymax numeric
+ );
+ 
+ 
+-- create reconstructed regression (weightings) fields table for live pca
+CREATE TABLE temperature_recon_weight_4_pca (rid serial NOT NULL,
+  event_id numeric,
+  year numeric,
+  month numeric,
+  idx_val numeric,
+  rast raster,
+  filename text,
+  idx_xmin numeric,
+  idx_xmax numeric,
+  idx_ymin numeric,
+  idx_ymax numeric
+ );
+ 
+-- create reconstructed index fields table for live pca
+ CREATE TABLE temperature_recon_idxRec_4_pca (rid serial NOT NULL,
+  event_id numeric,
+  year numeric,
+  month numeric,
+  idx_val numeric,
+  rast raster,
+  filename text,
+  idx_xmin numeric,
+  idx_xmax numeric,
+  idx_ymin numeric,
+  idx_ymax numeric
+ );
+  
+-- CREATE single view table
+CREATE TABLE temperature_monthly_single_recon (rid serial NOT NULL,
+  rast raster,
+  filename text,
+  event_id numeric,
+  year numeric,
+  month numeric,
+  idx_val numeric,
+  idx_xmin numeric,
+  idx_xmax numeric,
+  idx_ymin numeric,
+  idx_ymax numeric,
+  recon_single_temp_png character varying,
+  recon_single_temp_contour_geojson character varying,
+  CONSTRAINT temperature_monthly_single_recon_pkey PRIMARY KEY (rid));
+ 
+ 
+-- create monthly data table
+CREATE TABLE temperature_monthly_recon (rid serial NOT NULL,
+  year numeric,
+  month numeric,  
+  rast raster,
+  filename text,
+  idx_xmin numeric,
+  idx_xmax numeric,
+  idx_ymin numeric,
+  idx_ymax numeric,
+  temperature_monthly_recon_contour_geojson character varying,
+  CONSTRAINT temperature_monthly_recon_pkey PRIMARY KEY (rid));
+ 
+-- create monthly cru mean data table
+CREATE TABLE crumapsmean100 (rid serial NOT NULL,
+  month numeric,
+  rast raster,
+  filename text,
+  idx_xmin numeric,
+  idx_xmax numeric,
+  idx_ymin numeric,
+  idx_ymax numeric
+ );
+  
+-- create monthly cru std data table
+CREATE TABLE crumapsstd100 (rid serial NOT NULL,
+  month numeric,
+  rast raster,
+  filename text,
+  idx_xmin numeric,
+  idx_xmax numeric,
+  idx_ymin numeric,
+  idx_ymax numeric
+ );
+ 
+-- create temperature stats table 
+CREATE TABLE temperatureStats (
+  event_id integer,
+  cru_diff_mean float
+ );
+  
+--contour lines master table
+CREATE TABLE teperature_monthly_isotherms
+(
+  ogc_fid serial NOT NULL,
+  wkb_geometry geometry(LineString,3857),
+  temp numeric(12,3),
+  year numeric(4),
+  month numeric(2),
+  event_id numeric,
+  single boolean
+)
+-- for validation stations temperature data
+CREATE TABLE temperature_validation_data (
+  station_id numeric,
+  year numeric,
+  month numeric,
+  temperature numeric
+ );
+ 
+EOF

@@ -1,0 +1,10 @@
+.top{
+    float:left;
+    width: 33%; 
+}
+
+.bottom{
+    float:left;
+    width: 90%; 
+    margin-left:5%;    
+}

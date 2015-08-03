@@ -1,0 +1,55 @@
+#!/bin/bash
+
+starts=$(date +%s)
+
+resetRegmod
+cd /var/shiny-server/www/datacollectorv2 &&
+
+Rscript  regmodR/mainCL.R 1740 1
+sudo chmod o+w www/genmaps/GISFiles/clipped_world_poly*
+
+Rscript  regmodR/mainCL.R 1740 3
+sudo chmod o+w www/genmaps/GISFiles/clipped_world_poly*
+
+Rscript  regmodR/mainCL.R 1740 4
+sudo chmod o+w www/genmaps/GISFiles/clipped_world_poly*
+
+Rscript  regmodR/mainCL.R 1740 5
+sudo chmod o+w www/genmaps/GISFiles/clipped_world_poly*
+
+Rscript  regmodR/mainCL.R 1740 6
+sudo chmod o+w www/genmaps/GISFiles/clipped_world_poly*
+
+Rscript  regmodR/mainCL.R 1740 7
+sudo chmod o+w www/genmaps/GISFiles/clipped_world_poly*
+
+Rscript  regmodR/mainCL.R 1740 9
+sudo chmod o+w www/genmaps/GISFiles/clipped_world_poly*
+
+Rscript  regmodR/mainCL.R 1740 10
+sudo chmod o+w www/genmaps/GISFiles/clipped_world_poly*
+
+
+python ~/bin/ppmake.py
+
+
+# calculate temperature station stats
+Insert Into temp_stations_stats (
+    SELECT 
+        aaa.event_id, ST_Value(aaa.rast, bbb.geom) as temp_recon, bbb.year, bbb.month, bbb.temperature, bbb.id, bbb.lat, bbb.lon, bbb.name, bbb.elevation, bbb.rural FROM(
+                SELECT rast, event_id, year, month FROM single_recon_temp_png
+            ) as aaa,(
+                SELECT * FROM vali_station INNER JOIN vali_temperature ON vali_station.id=vali_temperature.station_id
+            ) as bbb
+    WHERE bbb.year = aaa.year and bbb.month = aaa.month and ST_Intersects(aaa.rast,1, bbb.geom)
+);
+
+
+ends=$(date +%s)
+endm=$((($ends-$starts)/60))
+ends=$((($ends-$starts)%60))
+
+echo "# # # # # # # # # # # # # # # # # # # # # # # #"
+echo "execution time"         
+echo "minutes: $endm seconds: $ends"
+echo "# # # # # # # # # # # # # # # # # # # # # # # #"        

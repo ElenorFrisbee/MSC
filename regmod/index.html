@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <meta charset="utf-8">
+        <meta name="Manuel Beck" content="all that stuff that matters">
+        <meta http-equiv="Reply-to" content="manuelbeck@outlook.com">
+        <meta name="description" content="">
+        <meta name="keywords" content="">
+        <meta name="creation-date" content="09/09/2014">
+
+        <title>Regmod</title>
+
+        <!--TILE SELECTION INCLUDES-->
+        <link rel="stylesheet" media="all" href="tileSelection/css/insights.css"/>
+        <link rel="stylesheet" media="all" href="tileSelection/css/truly.css"/>
+        <script src="tileSelection/js/d3.min.js"></script>
+        <script src="tileSelection/js/insights.js"></script>
+        <script src="tileSelection/js/tru247.js"></script>
+        <script src="tileSelection/js/tileSelect.js"></script>
+        <!--JQUERY INCLUDE-->
+        <link href="styles/jquery-ui.min.css" rel="stylesheet" type="text/css" />
+        <script src="js/jquery-1.11.1.min.js" type="text/javascript"></script>
+        <script src="js/jquery-ui.min.js" type="text/javascript"></script>
+        <link href="styles/styles.css" rel="stylesheet" type="text/css" />
+        <!--LEAFLET INCLUDES-->
+        <link rel="stylesheet" href="styles/leaflet-0.7.3.css" />
+        <script src="js/leaflet-0.7.3.js" type="text/javascript"></script>
+        <!-- small helper functions-->
+        <script src="js/utils.js" type="text/javascript"></script>
+        <!--Add Info Table Logic -->
+        <script src="js/infoTable.js" type="text/javascript"></script>
+
+        <!--start App-->
+        <script type="text/javascript">
+            $(function(){
+
+                // clear session storage from previous sessions
+                sessionStorage.clear();
+                // Add Loading animation
+                $('#map').prepend('<img class="loading" src="img/loadanimation.gif"/>');
+
+                // Scale map height based on window.height * mapheight
+                var mapheight = 0.61; 
+                var height = $(window).height();
+                mapheight = height * mapheight;
+                $('#map').css({'height':mapheight}) 
+                $('#top').prepend('<div id="spaceholder"></div>');
+                $('#top').css({'height':mapheight}) 
+
+                // load tileSelect
+                getAdvancedMenu1();
+                // load basemap
+                appInit();
+
+            });         
+        </script>
+
+        <!-- populate advanced Tile based select -->
+        <script type="text/javascript">
+            function getAdvancedMenu(){
+                // Populate Select
+                var loc = window.location.pathname;
+                var dir = loc.substring(0, loc.lastIndexOf('/'));
+
+                $.getJSON(dir+'/tileSelection/getTilesData.php?callback=?&mode=0',
+                    function(res){ 
+                        // check if view is available in db
+                        if(res['century'] != ''){ 
+                            createTileSelect(res['century'], 'century', '');
+                            //console.log("!!!!!!!!!!!!!!!!!!???????????????????!!!!!!!!!!!") 
+                            //console.log(res['century']) 
+                        }
+                }); 
+            }; 
+            function getAdvancedMenu1(){
+                var loc = window.location.pathname;
+                var dir = loc.substring(0, loc.lastIndexOf('/'));
+
+
+                $.getJSON(dir+'/tileSelection/getTilesData.php?callback=?&mode=11',
+                    function(res){ 
+                        console.log(res);
+                        console.log('CENTURY ALL')
+                        var centuries = {};
+
+                        /*
+                        for(century in res){
+                        console.log(century,res[century]['count']); // prints century with count
+                        centuries[century]=res[century]['count'];
+                        createTileSelect1(centuries, 'century', '', true);
+                        }
+                        */  
+                        createTileSelect1(res, 'century', '');
+                });
+                //   getTileData();
+
+            };
+        </script>
+
+        <!-- get map from db if available and display -->
+        <script src="js/legend.js" type="text/javascript"></script>
+        <script src="js/mapView.js" type="text/javascript"></script>
+        <script src="js/mapView_opti.js" type="text/javascript"></script>
+        <!-- for translation of idx array to geojson-->
+        <script src="js/geojson.min.js" type="text/javascript"></script>
+
+        <!-- ADD TIMELINE -->
+        <script src="timeline/js/timeline.js" type="text/javascript"></script>
+        <script src="timeline/js/tipsy.js" type="text/javascript"></script>
+        <script src="js/areaSelectControler.js" type="text/javascript"></script>
+        <link href="timeline/css/styles.css" rel="stylesheet" type="text/css" />
+        <link href="timeline/css/tipsy.css" rel="stylesheet" type="text/css" />
+        <script type="text/javascript">
+            $(function(){
+                // get Timeline Data and preselect (brush) century
+                var loc = window.location.pathname;
+                var dir = loc.substring(0, loc.lastIndexOf('/'));
+                $.getJSON(dir+'/timeline/getTimeline.php?callback=?',
+                    function(res){ 
+                        drawBarPlot(res,0, function(){
+                            drawBrush(1000, 1899);    
+                        });
+
+                    }
+                )
+                $('#bbSelect').click(function(){
+                    var loc = window.location.pathname;
+                    var dir = loc.substring(0, loc.lastIndexOf('/'));
+                    $.getJSON(dir+'/timeline/getTimeline.php?callback=?',
+                        function(res){ 
+                            drawBarPlot(res,63, function(){
+                                drawBrush(1400, 1699);    
+                            });
+
+                    })
+                });                         
+            });
+        </script>
+
+        <!-- MAP AREA SELECT -->
+        <script src="js/mapByAreaView.js" type="text/javascript"></script>
+        <script src="js/leaflet.draw/src/Leaflet.draw.js" type="text/javascript"></script>
+        <link href="js/leaflet.draw/dist/leaflet.draw.css" rel="stylesheet" type="text/css"/>
+        <script type="text/javascript">
+            $(function(){
+                $('#bbSelect').button()
+                $('#bbSelect').click(function(){
+                    mapAreaView(0);       
+                    $('#bbSelect').prop("value","reset region")
+
+                });
+            });               
+        </script>
+    </head>
+    <body>
+        <div id="info"><h1></h1></div>
+        <!--div id="my-popup" title="Info">
+        <div id='minimap'></div>
+        <div id='randomdottext'></div-->
+        </div>
+        <header>
+            <div class="nav">
+                <ul>
+                    <li class="story"><a  href="http://h2281281.stratoserver.net/regmod/story.html">Story</a></li>
+                    <li class="mapBrowser"><a  class="active" href="http://h2281281.stratoserver.net/regmod/">Map Browser</a></li>
+                    <li class="dashboard"><a href="http://h2281281.stratoserver.net/regmod/dashboard.html">Dashboard</a></li>
+                    <li class="results"><a  href="http://h2281281.stratoserver.net/regmod/results.html">Results</a></li>
+                </ul>
+            </div>
+        </header>       
+        <div id="wrapper">
+
+            <div id="top">
+                <div id="map"></div>
+            </div>
+            <div id="bottom">
+                <div class="left">
+                    <div id="advancedSelect">
+                        <h2>Select Time of Interest<br></h2>
+                        <input id="bbSelect" type="button" value="select by region">
+                        <div id="old_browser_msg">We're sorry but your browser is really old and can't handle the full interactive experience. We recommend you upgrade to the latest version as soon as possible.</div>
+                        <div id="century"></div>
+                        <div id="decade"></div>
+                        <div id="year"></div>
+                        <div id="month"></div>
+
+                        <div id="legend" class="rbow2">
+                            <ul>
+                                <li class="q1-11"></li>
+                                <li class="q2-11"></li>
+                                <li class="q3-11"></li>
+                                <li class="q4-11"></li>
+                                <li class="q5-11"></li>
+                                <li class="q6-11"></li>
+                                <li class="q7-11"></li>
+                                <li class="q8-11"></li>
+                                <li class="q9-11"></li>
+                                <li class="q10-11"></li>
+                                <li class="q11-11"></li>
+                            </ul>
+                            <p class="more">more data</p>
+                            <p class="less">less data</p>
+
+                        </div>                         <!--style="display:none"-->
+                    </div>
+                </div>
+                <div class="center" style="display:none">
+                    <div class="mainText">
+                        <center><h2>Calculated from <span id="eventCount"></span> <span id="eventText"></span> of <span id="locationCount"></span> <span id="locationText"></span></h2></center>
+                        <div id="statsText">
+                            <center><b><p>Cru Offset: <span id="cruText" style="color:orange"></span> &deg;C, Station Offset: <span id="stationTextMean" style="color:orange"></span><!-- Station stddev: <span id="stationTextStd" style="color:blue"></span--> &deg;C</p></b></center>
+                        </div>
+                    </div>
+                    <div id="jstable"></div>
+                </div>
+                <div class="right">
+                </div>
+            </div> 
+        </div>
+        </div>
+    </body>
+</html>
